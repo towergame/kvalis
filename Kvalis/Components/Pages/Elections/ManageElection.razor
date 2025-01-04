@@ -1,0 +1,93 @@
+@page "/manage/{Id}"
+@using Kvalis.Entities
+@using Kvalis.Services
+@inject ElectionService electionService
+@inject KvalisContext context
+@rendermode InteractiveServer
+
+@if (error)
+{
+    <h1>There was an error loading the election.</h1>
+    <p>You may not be the owner of this election.</p>
+}
+
+@if (election != null)
+{
+    <h1>@election.Id</h1>
+    <p>@election.EndDate</p>
+    @foreach(var question in election.Questions)
+    {
+        <h2>@question.Prompt</h2>
+        <ul>
+            @foreach(var option in question.Options)
+            {
+                <li>@option.Text</li>
+            }
+        </ul>
+    }
+    @if (election.EndDate < DateTime.Now)
+    {
+        <h2>Election has ended.</h2>
+    }
+    else
+    {
+        <h2>Election is still open.</h2>
+        <hr/>
+        <button @onclick="MintBallot">Mint Ballot</button>
+    
+        @if (!string.IsNullOrEmpty(lastMinted))
+        {
+            <p>Last minted ballot: @lastMinted</p>
+            <a href="/ballot/@lastMinted">Link</a>
+        }
+    }
+}
+else
+{
+    <h1>Loading...</h1>
+}
+
+@code {
+    [Parameter]
+    public string Id { get; set; }
+
+    private Election election = null;
+    private bool error = false;
+
+    private string lastMinted = "";
+    
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        try
+        {
+            election = await electionService.GetElection(Guid.Parse(Id));
+        }
+        catch (Exception ex)
+        {
+            error = true;
+        }
+        StateHasChanged();
+    }
+    
+    void MintBallot()
+    {
+        if (election.EndDate < DateTime.Now)
+        {
+            return;
+        }
+        
+        // Mint a ballot
+        var ballot = new Ballot()
+        {
+            Id = Guid.NewGuid(),
+        };
+        election.Ballots.Add(ballot);
+        
+        // context.Elections.Update(election);
+        context.Ballots.Add(ballot);
+        context.SaveChanges();
+        
+        lastMinted = ballot.Id.ToString();
+    }
+}

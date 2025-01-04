@@ -1,0 +1,40 @@
+@page "/debug/key-info"
+@using Kvalis.Services
+@using System.Text
+@inject KeyService keyService
+@inject ILogger<KeyInfo> logger
+@rendermode InteractiveServer
+
+<h1>Key Info</h1>
+@if (!string.IsNullOrEmpty(publicKey))
+{
+    <h2>Public Key</h2>
+    <pre>@publicKey</pre>
+} else
+{
+    <p>Public key not available</p>
+}
+@if (!string.IsNullOrEmpty(privateKey))
+{
+    <h2>Private Key</h2>
+    <pre>@privateKey</pre>
+} else
+{
+    <p>Private key not available</p>
+}
+
+@code {
+    private string publicKey;
+    private string privateKey;
+    
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        publicKey = Convert.ToBase64String(await keyService.GetPublicKey());
+        privateKey = Convert.ToBase64String(await keyService.GetPrivateKey());
+
+        // logger.LogInformation("Public Key: {publicKey}", publicKey);
+        
+        StateHasChanged();
+    }
+}

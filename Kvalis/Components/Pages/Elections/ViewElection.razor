@@ -1,0 +1,59 @@
+@page "/election/{Id}"
+@using Kvalis.Entities
+@using Kvalis.Services
+@inject ElectionService electionService
+
+@if (error)
+{
+    <h1>There was an error loading the election results</h1>
+    <p>Are you sure the election has ended and/or exists?</p>
+}
+else if (results == null)
+{
+    <h1>Loading...</h1>
+}
+else
+{
+    <h1>Id: @results.ElectionId</h1>
+    @foreach (var (question, options) in results.Results)
+    {
+        <h2>@question</h2>
+        <table>
+            <thead>
+            <tr>Option</tr>
+            <tr>Count</tr>
+            <tr>Percent</tr>
+            </thead>
+            @foreach(var (option, count) in options)
+            {
+                <tr>
+                    <td>@option</td>
+                    <td>@count</td>
+                    <td>@(count / options.Sum(kv => kv.Value))</td>
+                </tr>
+            }
+        </table>
+    }
+}
+
+@code {
+    [Parameter]
+    public string Id { get; set; }
+
+    private ElectionService.ElectionResults results = null;
+    private bool error = false;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        try
+        {
+            results = electionService.GetResults(Guid.Parse(Id));
+        }
+        catch (Exception ex)
+        {
+            error = true;
+        }
+        StateHasChanged();
+    }
+}

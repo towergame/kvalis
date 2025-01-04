@@ -1,0 +1,123 @@
+@page "/make-election"
+@using Kvalis.Entities
+@using Kvalis.Services
+@using System.Text
+@inject KeyService keyService
+@inject KvalisContext context
+@inject NavigationManager NavigationManager
+@inject ILogger<MakeElection> logger
+@rendermode InteractiveServer
+
+<PageTitle>Create a new election</PageTitle>
+
+<form method="post" @onsubmit="Submit">
+    <label for="question-count">Question Count:</label>
+    <input type="number" id="question-count" name="question-count" @onchange="OnChange">  <br/>
+    
+    @for (int i = 1; i <= questionCount; i++)
+    {
+        <label for="question-@i">Question @i:</label>
+        
+        var i1 = i;
+        <input type="text" id="question-@i" name="question-@i" @onchange='e => OnFieldChange($"question-{i1}", e)'> <br/>
+        
+        <label for="option-count-@i">Option Count:</label>
+        <input type="number" id="option-count-@i" name="option-count-@i" @onchange="OnOptionChange"> <br/>
+        
+        @for (int j = 1; j <= optionCount; j++)
+        {
+            <label for="option-@i-@j">Option @j:</label>
+            
+            var i2 = i;
+            
+            var j1 = j;
+            <input type="text" id="option-@i-@j" name="option-@i-@j" @onchange='e => OnFieldChange($"option-{i2}-{j1}", e)'> <br/>
+        }
+        
+        @code {
+            private int optionCount = 0;
+            
+            void OnOptionChange(ChangeEventArgs e)
+            {
+                optionCount = int.Parse(e.Value.ToString());
+            }
+        }
+    }
+    
+    <label for="end-date">Election End Date:</label>
+    <input type="datetime-local" id="end-date" name="end-date" @onchange='e => OnFieldChange("end-date", e)'> <br/>
+    
+    <button type="submit">Create Election</button>
+</form>
+
+@code {
+    private int questionCount = 0;
+    private Dictionary<string, string> document = new Dictionary<string, string>();
+
+    private byte[] publicKey = null;
+    
+    void OnFieldChange(string id, ChangeEventArgs e)
+    {
+        logger.LogInformation($"Field {id} changed to {e.Value}");
+        document[id] = e.Value.ToString();
+    }
+
+    void OnChange(ChangeEventArgs e)
+    {
+        questionCount = int.Parse(e.Value.ToString());
+    }
+    
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            publicKey = await keyService.GetPublicKey();
+            StateHasChanged();
+        }
+    }
+
+    void Submit()
+    {
+        var questionList = new List<Question>();
+        
+        for (int i = 1; i <= questionCount; i++)
+        {
+            var optionList = new List<Option>();
+            
+            for (int j = 1; j <= optionCount; j++)
+            {
+                var option = new Option()
+                {
+                    Id = Guid.NewGuid(),
+                    Text = document[$"option-{i}-{j}"]
+                };
+                
+                optionList.Add(option);
+            }
+            
+            var question = new Question()
+            {
+                Id = Guid.NewGuid(),
+                Prompt = document[$"question-{i}"],
+                Options = optionList
+            };
+            
+            questionList.Add(question);
+        }
+        
+        var election = new Election()
+        {
+            Id = Guid.NewGuid(),
+            Questions = questionList,
+            EndDate = DateTime.Parse(document[$"end-date"]),
+            PublicKey = publicKey
+        };
+        
+        // Save election to database
+        context.Elections.Add(election);
+        context.SaveChanges();
+        
+        // Redirect to election page
+        NavigationManager.NavigateTo($"/election/{election.Id}");
+    }
+}

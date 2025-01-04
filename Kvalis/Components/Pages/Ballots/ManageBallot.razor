@@ -1,0 +1,131 @@
+@page "/manage-ballot/{Id}"
+@using Kvalis.Entities
+@using Kvalis.Services
+@using System.Text
+@inject BallotService ballotService
+@inject KeyService keyService
+@inject KvalisContext context
+@rendermode InteractiveServer
+
+@if (error)
+{
+    <h1>Error</h1>
+    <p>There was an error processing your request.</p>
+    <p>This might mean that this ballot has already been issued to someone else or you already have obtained a ballot.</p>
+}
+else if (ballot == null)
+{
+    <h1>Loading...</h1>
+}
+else
+{
+    <h1>Ballot</h1>
+    <p>Ballot ID: @ballot.Id</p>
+                                    
+    @if (ballot.Submitted)
+    {
+        <p>This ballot has been used.</p>
+    }
+    else
+    {
+        @foreach (var question in ballot.Election.Questions)
+        {
+            <h2>@question.Prompt</h2>
+            <select class="form-control" @onchange="e => OnChange(question, e)">
+                <option value="">Select...</option>
+                @foreach (var choice in question.Options)
+                {
+                    <option value="@choice.Id.ToString()">@choice.Text</option>
+                }
+            </select>
+            <br/>
+        }
+        <button @onclick="Submit"></button>
+    }
+
+}
+
+@code {
+    [Parameter]
+    public string Id { get; set; }
+
+    private Ballot ballot = null;
+    private bool error = false;
+    
+    private Dictionary<Guid, Guid?> answers = new();
+    
+    private void OnChange(Question question, ChangeEventArgs e)
+    {
+        answers[question.Id] = Guid.Parse(e.Value.ToString());
+    }
+
+    private void Submit()
+    {
+        if (answers.Values.Any(a => a == null))
+        {
+            return;
+        }
+        
+        foreach (var question in ballot.Election.Questions)
+        {
+            var option = question.Options.FirstOrDefault(o => o.Id == answers[question.Id]);
+            var answer = new Vote
+            {
+                Question = question,
+                Option = option
+            };
+            ballot.Election.Votes.Add(answer);
+        }
+        ballot.Submitted = true;
+        context.Ballots.Update(ballot);
+        context.Elections.Update(ballot.Election);
+        context.SaveChanges();
+        
+        // Refresh the page.
+        StateHasChanged();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        try
+        {
+            ballot = await ballotService.GetElection(Guid.Parse(Id));
+            
+            if (ballot.PublicKey == null)
+            {
+                var publicKey = await keyService.GetPublicKey();
+                if (ballot.Election.Ballots.Any(b => b.PublicKey != null && b.PublicKey == publicKey))
+                {
+                    // No.
+                    error = true;
+                    ballot = null;
+                }
+                else
+                {
+                    ballot.PublicKey = publicKey;
+                    context.Ballots.Update(ballot);
+                    await context.SaveChangesAsync();
+                    
+                    foreach (var question in ballot.Election.Questions)
+                    {
+                        answers[question.Id] = null;
+                    }
+                }
+            }
+            else
+            {
+                if (keyService.Validate(await keyService.Sign(Encoding.ASCII.GetBytes(ballot.Id.ToString())), ballot.PublicKey) == null)
+                {
+                    error = true;
+                    ballot = null;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            error = true;
+        }
+        StateHasChanged();
+    }
+}
