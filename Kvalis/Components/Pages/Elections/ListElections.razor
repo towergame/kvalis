@@ -1,0 +1,81 @@
+@page "/election"
+@using Kvalis.Entities
+@using Kvalis.Services
+@inject ElectionService electionService
+@inject KvalisContext context
+@inject KeyService keyService
+@rendermode InteractiveServer
+
+<h1>Hosted Elections</h1>
+@if (hostedElections.Count == 0)
+{
+    <p>You have not hosted any elections.</p>
+}
+else
+{
+    <table>
+        <thead>
+        <tr>
+        <th>Election ID</th>
+        <th>End Date</th>
+        <th></th>
+        <th></th>
+        </tr>
+        </thead>
+        @foreach (var election in hostedElections)
+        {
+            <tr>
+                <td>@election.Id</td>
+                <td>@election.EndDate.ToString("U")</td>
+                <td><a href="/manage/@election.Id.ToString()">Manage</a></td>
+                <td><a href="/election/@election.Id.ToString()">View</a></td>
+            </tr>
+        }
+    </table>
+}
+
+<h1>Joined Elections</h1>
+@if (joinedElections.Count == 0)
+{
+    <p>You have not joined any elections.</p>
+}
+else
+{
+    <table>
+        <thead>
+        <tr>
+        <th>Election ID</th>
+        <th>End Date</th>
+        <th></th>
+        </tr>
+        </thead>
+        @foreach (var election in joinedElections)
+        {
+            <tr>
+                <td>@election.Id</td>
+                <td>@election.EndDate.ToString("U")</td>
+                <td><a href="/election/@election.Id.ToString()">View</a></td>
+            </tr>
+        }
+    </table>
+}
+
+<hr/>
+
+<a href="/make-election">Create Election</a>
+
+@code {
+    private List<Election> hostedElections = new List<Election>();
+    private  List<Election> joinedElections = new List<Election>();
+    
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        var publicKey = await keyService.GetPublicKey();
+        
+        hostedElections = context.Elections.Where(e => e.PublicKey == publicKey).ToList();
+        joinedElections = context.Elections.Where(e => e.Ballots.Any(b => b.PublicKey == publicKey)).ToList();
+        
+        StateHasChanged();
+    }
+}
