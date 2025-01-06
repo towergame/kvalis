@@ -13,24 +13,26 @@
 }
 else
 {
-    <table>
+    <table class="table table-hover">
         <thead>
         <tr>
-        <th>Election ID</th>
-        <th>End Date</th>
-        <th></th>
-        <th></th>
+            <th scope="col">Election ID</th>
+            <th scope="col">End Date</th>
+            <th scope="col"></th>
+            <th scope="col"></th>
         </tr>
         </thead>
-        @foreach (var election in hostedElections)
-        {
-            <tr>
-                <td>@election.Id</td>
-                <td>@election.EndDate.ToString("U")</td>
-                <td><a href="/manage/@election.Id.ToString()">Manage</a></td>
-                <td><a href="/election/@election.Id.ToString()">View</a></td>
-            </tr>
-        }
+        <tbody>
+            @foreach (var election in hostedElections)
+            {
+                <tr>
+                    <td>@election.Id</td>
+                    <td>@election.EndDate.ToString("U")</td>
+                    <td><a href="/manage/@election.Id.ToString()" class="btn btn-outline-danger">Manage</a></td>
+                    <td><a href="/election/@election.Id.ToString()" class="btn btn-outline-primary">View</a></td>
+                </tr>
+            }
+        </tbody>
     </table>
 }
 
@@ -41,37 +43,42 @@ else
 }
 else
 {
-    <table>
+    <table class="table table-hover">
         <thead>
         <tr>
-        <th>Election ID</th>
-        <th>End Date</th>
-        <th></th>
+            <th scope="col">Election ID</th>
+            <th scope="col">End Date</th>
+            <th scope="col"></th>
+            <th scope="col"></th>
         </tr>
         </thead>
-        @foreach (var election in joinedElections)
-        {
-            <tr>
-                <td>@election.Id</td>
-                <td>@election.EndDate.ToString("U")</td>
-                <td><a href="/election/@election.Id.ToString()">View</a></td>
-            </tr>
-        }
+        <tbody>
+            @foreach (var election in joinedElections)
+            {
+                <tr>
+                    <td>@election.Id</td>
+                    <td>@election.EndDate.ToString("U")</td>
+                    <td><a href="/election/@election.Id.ToString()" class="btn btn-outline-primary">View</a></td>
+                    <td><a href="/manage-ballot/@(election.Ballots.Any(b => b.PublicKey == publicKey))" class="btn btn-outline-primary">Ballot</a></td>
+                </tr>
+            }
+        </tbody>
     </table>
 }
 
 <hr/>
 
-<a href="/make-election">Create Election</a>
+<a href="/make-election" class="btn btn-primary">Create Election</a>
 
 @code {
     private List<Election> hostedElections = new List<Election>();
     private  List<Election> joinedElections = new List<Election>();
+    private byte[] publicKey = null;
     
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (!firstRender) return;
-        var publicKey = await keyService.GetPublicKey();
+        publicKey = await keyService.GetPublicKey();
         
         hostedElections = context.Elections.Where(e => e.PublicKey == publicKey).ToList();
         joinedElections = context.Elections.Where(e => e.Ballots.Any(b => b.PublicKey == publicKey)).ToList();

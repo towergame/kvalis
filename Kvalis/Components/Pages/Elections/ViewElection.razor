@@ -18,22 +18,49 @@ else
     @foreach (var (question, options) in results.Results)
     {
         <h2>@question</h2>
-        <table>
+        <table class="table table-hover"> 
             <thead>
-            <tr>Option</tr>
-            <tr>Count</tr>
-            <tr>Percent</tr>
+            <th scope="col">Option</th>
+            <th scope="col">Count</th>
+            <th scope="col">Percent</th>
             </thead>
-            @foreach(var (option, count) in options)
-            {
-                <tr>
-                    <td>@option</td>
-                    <td>@count</td>
-                    <td>@(count / options.Sum(kv => kv.Value))</td>
-                </tr>
-            }
+            <tbody>
+                @foreach(var (option, count) in options)
+                {
+                    <tr>
+                        <td>@option</td>
+                        <td>@count</td>
+                        <td>@Math.Floor((double)count / options.Sum(kv => kv.Value) * 100)%</td>
+                    </tr>
+                }
+            </tbody>
         </table>
     }
+    
+    <br/>
+    
+    <h2>Ballots</h2>
+    <p>Ballots Created: @results.Ballots.Count</p>
+    <p>Ballots Issued: @results.Ballots.Count(b => b.PublicKey != null)</p>
+    <p>Ballots Used: @results.Ballots.Count(b => b.Submitted)</p>
+    
+    <table class="table table-hover"> 
+        <thead>
+        <th scope="col">Ballot ID</th>
+        <th scope="col">Issued To</th>
+        <th scope="col">Used?</th>
+        </thead>
+        <tbody>
+        @foreach (var ballot in results.Ballots)
+        {
+            <tr>
+                <td>@ballot.Id</td>
+                <td>@(Convert.ToBase64String(ballot.PublicKey))</td>
+                <td>@(ballot.Submitted ? "Yes" : "No")</td>
+            </tr>
+        }
+        </tbody>
+    </table>
 }
 
 @code {

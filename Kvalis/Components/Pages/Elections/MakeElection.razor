@@ -47,11 +47,15 @@
     <label for="end-date">Election End Date:</label>
     <input type="datetime-local" id="end-date" name="end-date" @onchange='e => OnFieldChange("end-date", e)'> <br/>
     
-    <button type="submit">Create Election</button>
+    <button type="submit" class="btn btn-primary">Create Election</button>
+    <br/>
+    <p class="text-danger">@error</p>
 </form>
 
 @code {
     private int questionCount = 0;
+    private int minQuestionCount = Int32.MaxValue;
+    private string error = "";
     private Dictionary<string, string> document = new Dictionary<string, string>();
 
     private byte[] publicKey = null;
@@ -78,6 +82,12 @@
 
     void Submit()
     {
+        if (questionCount < 1)
+        {
+            error = "Question count must be at least 1.";
+            return;
+        }
+        
         var questionList = new List<Question>();
         
         for (int i = 1; i <= questionCount; i++)

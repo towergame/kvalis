@@ -33,7 +33,7 @@
     {
         <h2>Election is still open.</h2>
         <hr/>
-        <button @onclick="MintBallot">Mint Ballot</button>
+        <button @onclick="MintBallot" class="btn btn-danger">Mint Ballot</button>
     
         @if (!string.IsNullOrEmpty(lastMinted))
         {

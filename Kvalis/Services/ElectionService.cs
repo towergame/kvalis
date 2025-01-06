@@ -27,6 +27,7 @@ public class ElectionService(KeyService keyService, KvalisContext context)
     {
         public Guid ElectionId { get; set; }
         public Dictionary<string, Dictionary<string, int>> Results { get; set; }
+        public List<Ballot> Ballots { get; set; }
     }
     
     public ElectionResults GetResults(Guid electionId)
@@ -56,6 +57,8 @@ public class ElectionService(KeyService keyService, KvalisContext context)
             }
             results.Results[question.Prompt] = questionResults;
         }
+        
+        results.Ballots = _context.Ballots.Where(ballot => ballot.Election.Id == electionId).ToList();
         
         return results;
     }
